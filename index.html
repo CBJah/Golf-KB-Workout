@@ -33,6 +33,7 @@
     --accent-a: #6B8F71;   /* sage green */
     --accent-b: #8B7355;   /* warm umber */
     --accent-c: #A67B5B;   /* terracotta */
+    --accent-m: #7B9EA6;   /* slate blue — mobility */
     --danger: #C0614A;
     --safe: #6B8F71;
     --highlight: #E8E0D0;
@@ -118,12 +119,20 @@
   .day-card.day-a::after { background: var(--accent-a); }
   .day-card.day-b::after { background: var(--accent-b); }
   .day-card.day-c::after { background: var(--accent-c); }
+  .day-card.day-m::after { background: var(--accent-m); }
   .day-card:active { background: var(--surface2); }
+
+  /* Mobility card is visually lighter — dashed border, subtler feel */
+  .day-card.day-m {
+    background: #F4F7F8;
+    border-style: dashed;
+  }
 
   .day-card-tag { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 6px; }
   .day-a .day-card-tag { color: var(--accent-a); }
   .day-b .day-card-tag { color: var(--accent-b); }
   .day-c .day-card-tag { color: var(--accent-c); }
+  .day-m .day-card-tag { color: var(--accent-m); }
 
   .day-card-title {
     font-family: 'Cormorant Garamond', serif;
@@ -335,6 +344,62 @@
     flex: 1; cursor: pointer; outline: none; color-scheme: light;
   }
 
+  /* ── RECOVERY CARD ── */
+  .recovery-card {
+    border: 1px solid var(--border); border-radius: 14px;
+    background: var(--surface); margin-bottom: 20px; overflow: hidden;
+  }
+  .recovery-card-header {
+    display: flex; align-items: center; gap: 14px;
+    padding: 16px 18px; cursor: pointer;
+  }
+  .recovery-status-dot {
+    width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+  }
+  .recovery-card-title {
+    flex: 1; font-family: 'Cormorant Garamond', serif; font-size: 17px; font-weight: 400;
+  }
+  .recovery-card-sub { font-size: 10px; color: var(--muted); margin-top: 2px; }
+  .recovery-chevron { font-size: 11px; color: var(--muted); transition: transform 0.2s; }
+  .recovery-chevron.open { transform: rotate(180deg); }
+  .recovery-card-body { padding: 0 18px 18px; display: none; }
+  .recovery-card-body.open { display: block; }
+
+  .week-dots {
+    display: flex; gap: 6px; margin-bottom: 16px; align-items: flex-end;
+  }
+  .week-day {
+    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px;
+  }
+  .week-day-bar {
+    width: 100%; border-radius: 4px; min-height: 6px;
+    transition: height 0.3s ease;
+  }
+  .week-day-label { font-size: 8px; letter-spacing: 1px; color: var(--muted); text-transform: uppercase; }
+  .week-day-label.today { color: var(--text); font-weight: bold; }
+
+  .recovery-rule {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 10px 0; border-top: 1px solid var(--border); font-size: 11px; line-height: 1.7;
+  }
+  .recovery-rule:first-child { border-top: none; padding-top: 0; }
+  .recovery-rule-icon { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+  .recovery-rule-text { color: var(--muted); }
+  .recovery-rule-text strong { color: var(--text); font-weight: normal; }
+
+  /* ── EQUIPMENT TOGGLE ── */
+  .equip-toggle {
+    display: inline-flex; border: 1px solid var(--border);
+    border-radius: 8px; overflow: hidden; margin-top: 12px;
+  }
+  .equip-btn {
+    padding: 6px 14px; font-family: 'DM Mono', monospace;
+    font-size: 9px; letter-spacing: 2px; text-transform: uppercase;
+    background: none; border: none; color: var(--muted); cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+  }
+  .equip-btn.active { background: var(--text); color: var(--bg); }
+
   @keyframes fadeSlide { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
   .anim-in { animation: fadeSlide 0.25s ease forwards; }
 </style>
@@ -353,9 +418,22 @@
       <div style="font-size:9px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:8px;">This Week</div>
       <div id="week-summary" style="font-size:11px;color:var(--muted);"></div>
     </div>
+    <div id="recovery-card-container"></div>
     <div style="margin-bottom:12px;font-size:9px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;">Select Workout</div>
     <div class="day-grid" id="day-grid"></div>
   </div>
+</div>
+
+<!-- MOBILITY -->
+<div id="screen-mobility" class="screen">
+  <div class="workout-header">
+    <button class="back-btn" onclick="showScreen('home')">← Back</button>
+    <div class="workout-title">Rest Day <em>Mobility</em></div>
+    <div class="workout-progress">
+      <div class="workout-progress-fill" id="mob-progress-fill" style="width:0%;background:var(--accent-m)"></div>
+    </div>
+  </div>
+  <div class="body" id="mobility-body"></div>
 </div>
 
 <!-- WORKOUT -->
@@ -363,7 +441,11 @@
   <div class="workout-header">
     <button class="back-btn" onclick="goHome()">← Back</button>
     <div id="workout-title" class="workout-title"></div>
-    <div class="workout-progress">
+    <div class="equip-toggle">
+      <button class="equip-btn active" id="equip-kb" onclick="setEquipment('kb')">🏋️ Kettlebell</button>
+      <button class="equip-btn" id="equip-db" onclick="setEquipment('db')">Dumbbell</button>
+    </div>
+    <div class="workout-progress" style="margin-top:10px">
       <div class="workout-progress-fill" id="progress-fill" style="width:0%"></div>
     </div>
   </div>
@@ -438,59 +520,207 @@ const PROGRAMS = [
     id: 'A', label: 'Power & Pull', focus: 'Posterior chain + rotational power',
     accent: '#6B8F71',
     exercises: [
-      { id:'swing', name:'Kettlebell Swing', defaultSets:3, defaultReps:15, icon:'⛳',
+      { id:'swing', icon:'⛳',
         golf:'Hip hinge explosiveness — the engine of your downswing.',
-        cue:'Hinge hard, snap hips. Keep your lats packed.',
-        youtube: YT('kettlebell swing'), ytLabel:'Watch: KB Swing' },
-      { id:'row', name:'Single-Arm Row', defaultSets:3, defaultReps:10, icon:'🏌️',
+        kb:{ name:'Kettlebell Swing', cue:'Hinge hard, snap hips. Keep your lats packed.', youtube: YT('kettlebell swing'), ytLabel:'Watch: KB Swing' },
+        db:{ name:'Dumbbell Swing', cue:'Hold one dumbbell head with both hands. Same hip hinge — drive from the hips, not the arms.', youtube: YT('dumbbell swing'), ytLabel:'Watch: DB Swing' },
+        defaultSets:3, defaultReps:15 },
+      { id:'row', icon:'🏌️',
         golf:'Scapular retraction — stabilises lead shoulder at impact.',
-        cue:'Drive elbow to hip. Avoid rotating the torso.',
-        youtube: YT('single arm kettlebell row'), ytLabel:'Watch: Single-Arm Row' },
-      { id:'goblet', name:'Goblet Squat', defaultSets:3, defaultReps:12, icon:'🌿',
+        kb:{ name:'Single-Arm KB Row', cue:'Drive elbow to hip. Avoid rotating the torso.', youtube: YT('single arm kettlebell row'), ytLabel:'Watch: KB Row' },
+        db:{ name:'Single-Arm DB Row', cue:'Drive elbow to hip. Avoid rotating the torso. Brace on a bench or your knee.', youtube: YT('single arm dumbbell row'), ytLabel:'Watch: DB Row' },
+        defaultSets:3, defaultReps:10 },
+      { id:'goblet', icon:'🌿',
         golf:'Hip mobility + quad strength for a stable base.',
-        cue:'Chest tall, elbows inside knees. Sit into it.',
-        youtube: YT('goblet squat kettlebell'), ytLabel:'Watch: Goblet Squat' },
+        kb:{ name:'Goblet Squat', cue:'Hold KB by the horns at chest. Elbows inside knees, chest tall. Sit into it.', youtube: YT('goblet squat kettlebell'), ytLabel:'Watch: KB Goblet Squat' },
+        db:{ name:'Goblet Squat', cue:'Hold one dumbbell vertically by one end at chest. Elbows inside knees, chest tall. Sit into it.', youtube: YT('goblet squat dumbbell'), ytLabel:'Watch: DB Goblet Squat' },
+        defaultSets:3, defaultReps:12 },
     ]
   },
   {
     id: 'B', label: 'Stability & Drive', focus: 'Core anti-rotation + press strength',
     accent: '#8B7355',
     exercises: [
-      { id:'tgu', name:'Turkish Get-Up', defaultSets:3, defaultReps:3, icon:'🏔️',
+      { id:'tgu', icon:'🏔️',
         golf:'Total-body coordination, shoulder stability, hip mobility.',
-        cue:'Slow and deliberate. Eye on the bell the whole way.',
-        youtube: YT('turkish get up kettlebell'), ytLabel:'Watch: Turkish Get-Up' },
-      { id:'press', name:'Single-Arm Press', defaultSets:3, defaultReps:8, icon:'🎯',
+        kb:{ name:'Turkish Get-Up', cue:'Slow and deliberate. Eye on the bell the whole way.', youtube: YT('turkish get up kettlebell'), ytLabel:'Watch: KB Get-Up' },
+        db:{ name:'Turkish Get-Up', cue:'Slow and deliberate. Keep the dumbbell flat and level — the balance point is slightly different to a KB. Eye on the weight the whole way.', youtube: YT('turkish get up dumbbell'), ytLabel:'Watch: DB Get-Up' },
+        defaultSets:3, defaultReps:3 },
+      { id:'press', icon:'🎯',
         golf:'Shoulder strength + anti-lateral flexion core demand.',
-        cue:'Brace hard. Press vertical. Don\'t lean away.',
-        youtube: YT('single arm kettlebell press'), ytLabel:'Watch: Single-Arm Press' },
-      { id:'carry', name:'Suitcase Carry', defaultSets:3, defaultReps:20, icon:'🚶',
+        kb:{ name:'Single-Arm KB Press', cue:'Brace hard. Press vertical. Don\'t lean away.', youtube: YT('single arm kettlebell press'), ytLabel:'Watch: KB Press' },
+        db:{ name:'Single-Arm DB Press', cue:'Brace hard. Press vertical. Don\'t lean away. Neutral or pronated grip both work.', youtube: YT('single arm dumbbell press standing'), ytLabel:'Watch: DB Press' },
+        defaultSets:3, defaultReps:8 },
+      { id:'carry', icon:'🚶',
         golf:'Lateral core stability — resists side-bend at top of backswing.',
-        cue:'Stand tall. Don\'t hike the loaded hip. Walk smooth.',
-        youtube: YT('kettlebell suitcase carry'), ytLabel:'Watch: Suitcase Carry' },
+        kb:{ name:'Suitcase Carry', cue:'Stand tall. Don\'t hike the loaded hip. Walk smooth.', youtube: YT('kettlebell suitcase carry'), ytLabel:'Watch: KB Carry' },
+        db:{ name:'Suitcase Carry', cue:'Stand tall. Don\'t hike the loaded hip. Walk smooth. Dumbbell works identically.', youtube: YT('dumbbell suitcase carry'), ytLabel:'Watch: DB Carry' },
+        defaultSets:3, defaultReps:20 },
     ]
   },
   {
     id: 'C', label: 'Speed & Finish', focus: 'Rotational power + conditioning',
     accent: '#A67B5B',
     exercises: [
-      { id:'clean', name:'KB Clean', defaultSets:3, defaultReps:6, icon:'💥',
+      { id:'clean', icon:'💥',
         golf:'Triple extension — mirrors the kinetic chain of a drive.',
-        cue:'Pull the bell close. Meet it, don\'t catch it.',
-        youtube: YT('kettlebell clean'), ytLabel:'Watch: KB Clean' },
-      { id:'lunge', name:'Lateral Lunge', defaultSets:3, defaultReps:8, icon:'🌾',
+        kb:{ name:'KB Clean', cue:'Pull the bell close. Meet it, don\'t catch it.', youtube: YT('kettlebell clean'), ytLabel:'Watch: KB Clean' },
+        db:{ name:'DB Clean', cue:'Same triple extension — hips, knees, ankles. The DB rotates naturally on the way up. Control the catch.', youtube: YT('dumbbell clean single arm'), ytLabel:'Watch: DB Clean' },
+        defaultSets:3, defaultReps:6 },
+      { id:'lunge', icon:'🌾',
         golf:'Frontal plane hip strength — load and push off trail leg.',
-        cue:'Sit into the heel. Keep the other leg straight.',
-        youtube: YT('lateral lunge kettlebell'), ytLabel:'Watch: Lateral Lunge' },
-      { id:'bup', name:'Bottoms-Up Press', defaultSets:3, defaultReps:6, icon:'🕳️',
+        kb:{ name:'Lateral Lunge', cue:'Sit into the heel. Keep the other leg straight. Hold KB at chest or at sides.', youtube: YT('lateral lunge kettlebell'), ytLabel:'Watch: KB Lateral Lunge' },
+        db:{ name:'Lateral Lunge', cue:'Sit into the heel. Keep the other leg straight. Hold DB at sides or goblet position.', youtube: YT('lateral lunge dumbbell'), ytLabel:'Watch: DB Lateral Lunge' },
+        defaultSets:3, defaultReps:8 },
+      { id:'bup', icon:'🕳️',
         golf:'Wrist stability + rotator cuff — protects at top of backswing.',
-        cue:'Grip tighter than normal. Control the wobble.',
-        youtube: YT('bottoms up kettlebell press'), ytLabel:'Watch: Bottoms-Up Press' },
+        kb:{ name:'Bottoms-Up Press', cue:'Grip tighter than normal. Control the wobble. The instability is the point.', youtube: YT('bottoms up kettlebell press'), ytLabel:'Watch: Bottoms-Up Press' },
+        db:{ name:'Single-Arm Overhead Press', cue:'3–4 second slow eccentric (lowering phase). Full lockout at top. The slow lower creates the same rotator cuff demand as the bottoms-up grip.', youtube: YT('single arm dumbbell overhead press slow eccentric'), ytLabel:'Watch: DB Overhead Press' },
+        defaultSets:3, defaultReps:6 },
     ]
   }
 ];
 
+const MOBILITY = [
+  {
+    id: 'mob-9090',
+    name: '90/90 Hip Rotations',
+    icon: '🌀',
+    sets: '2 sets',
+    reps: '10 reps each side',
+    cue: 'Sit tall, both knees at 90°. Slowly rotate trailing knee open like a book, then switch sides. Keep hips grounded throughout — don\'t let them lift.',
+    golf: 'Trains both internal and external hip rotation bilaterally — directly mirrors the trail hip backswing pivot and lead hip follow-through. The single highest-yield hip drill for golfers.',
+    youtube: YT('90 90 hip rotation golf mobility'),
+  },
+  {
+    id: 'mob-openbook',
+    name: 'Open Book',
+    icon: '📖',
+    sets: '2 sets',
+    reps: '8 reps each side',
+    cue: 'Lie on your side, knees stacked at 90°. Keep hips stacked as you rotate your top arm across your body, opening the chest toward the ceiling. Let the arm reach and breathe into the rotation.',
+    golf: 'Unlocks thoracic rotation while the pelvis stays locked — so all movement happens in the mid-back where it should. Directly reduces lower back compensatory load during the swing.',
+    youtube: YT('open book thoracic rotation golf'),
+  },
+  {
+    id: 'mob-kneeling-trot',
+    name: 'Kneeling Thoracic Rotation',
+    icon: '🌪️',
+    sets: '2 sets',
+    reps: '8 reps each side',
+    cue: 'Half-kneeling (one knee down). Place one hand behind your head, elbow to ceiling. Rotate open from the mid-back — not the lower back. Keep the front knee tracking over the foot.',
+    golf: 'Trains the X-factor separation — upper body rotating independently of a stable lower body. The primary source of power in the golf swing. Also a bonus anterior hip flexor opener from the kneeling position.',
+    youtube: YT('kneeling thoracic rotation golf'),
+  },
+];
+
+let mobDone = new Set();
 let currentProg = null, sessionData = {}, deleteTargetId = null, overloadContext = null;
+let currentEquip = localStorage.getItem('kb_equip') || 'kb';
+
+function setEquipment(type) {
+  currentEquip = type;
+  localStorage.setItem('kb_equip', type);
+  document.getElementById('equip-kb').classList.toggle('active', type === 'kb');
+  document.getElementById('equip-db').classList.toggle('active', type === 'db');
+  renderWorkout();
+}
+
+function startMobility() {
+  mobDone = new Set();
+  renderMobility();
+  showScreen('mobility');
+}
+
+function renderMobility() {
+  const body = document.getElementById('mobility-body');
+  body.innerHTML = '';
+
+  // Intro card
+  const intro = document.createElement('div');
+  intro.style.cssText = `
+    background: #EEF4F6; border: 1px solid #D4E4E8; border-radius: 14px;
+    padding: 18px; margin-bottom: 16px; font-size: 11px; color: var(--muted); line-height: 1.8;
+  `;
+  intro.innerHTML = `
+    <div style="font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:400;color:var(--text);margin-bottom:6px;">For your off days</div>
+    Three dynamic movements targeting the hip and thoracic mobility that drives your golf swing — and protects your lower back. No equipment. 10 minutes. Do these on rest days to keep adaptation happening without adding training load.
+  `;
+  body.appendChild(intro);
+
+  MOBILITY.forEach((ex, i) => {
+    const done = mobDone.has(ex.id);
+    const card = document.createElement('div');
+    card.className = 'ex-card anim-in';
+    card.id = `mob-card-${ex.id}`;
+    card.style.animationDelay = `${i * 0.07}s`;
+    card.innerHTML = `
+      <div class="ex-card-header" onclick="toggleMobBody('${ex.id}')">
+        <div class="ex-icon" style="background:#EEF4F6">${ex.icon}</div>
+        <div class="ex-info">
+          <div class="ex-name">${ex.name}</div>
+          <div class="ex-meta">${ex.sets} · ${ex.reps}</div>
+        </div>
+        <div class="ex-done-indicator" id="mob-done-${ex.id}">${done ? '✓' : '○'}</div>
+      </div>
+      <div class="ex-body" id="mob-body-${ex.id}" style="display:${i === 0 ? 'block' : 'none'}">
+        <div style="font-size:12px;color:var(--muted);line-height:1.8;padding:10px 0 14px;border-bottom:1px solid var(--border);margin-bottom:14px;">
+          ${ex.cue}
+        </div>
+        <div style="margin-bottom:14px;">
+          <a class="yt-link" href="${ex.youtube}" target="_blank" rel="noopener">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M23.5 6.19a3.02 3.02 0 00-2.12-2.14C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.38.55A3.02 3.02 0 00.5 6.19C0 8.07 0 12 0 12s0 3.93.5 5.81a3.02 3.02 0 002.12 2.14C4.5 20.5 12 20.5 12 20.5s7.5 0 9.38-.55a3.02 3.02 0 002.12-2.14C24 15.93 24 12 24 12s0-3.93-.5-5.81zM9.75 15.52V8.48L15.86 12l-6.11 3.52z"/></svg>
+            Watch demo
+          </a>
+        </div>
+        <button class="golf-tip-btn" onclick="toggleMobTip('${ex.id}')">⛳ Golf benefit</button>
+        <div class="golf-tip-content" id="mob-tip-${ex.id}" style="border-left-color:var(--accent-m)">
+          ${ex.golf}
+        </div>
+        <button onclick="toggleMobDone('${ex.id}')"
+          style="width:100%;margin-top:14px;padding:12px;border-radius:10px;border:1px solid ${done ? 'var(--accent-m)' : 'var(--border)'};
+          background:${done ? '#EEF4F6' : 'none'};color:${done ? 'var(--accent-m)' : 'var(--muted)'};
+          font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;"
+          id="mob-check-btn-${ex.id}">
+          ${done ? '✓ Done' : 'Mark done'}
+        </button>
+      </div>
+    `;
+    body.appendChild(card);
+  });
+
+  updateMobProgress();
+}
+
+function toggleMobBody(id) {
+  const b = document.getElementById(`mob-body-${id}`);
+  b.style.display = b.style.display === 'none' ? 'block' : 'none';
+}
+
+function toggleMobTip(id) {
+  document.getElementById(`mob-tip-${id}`).classList.toggle('open');
+}
+
+function toggleMobDone(id) {
+  if (mobDone.has(id)) { mobDone.delete(id); } else { mobDone.add(id); }
+  // Re-render just this card's done state
+  const done = mobDone.has(id);
+  const indicator = document.getElementById(`mob-done-${id}`);
+  if (indicator) indicator.textContent = done ? '✓' : '○';
+  const btn = document.getElementById(`mob-check-btn-${id}`);
+  if (btn) {
+    btn.textContent = done ? '✓ Done' : 'Mark done';
+    btn.style.borderColor = done ? 'var(--accent-m)' : 'var(--border)';
+    btn.style.background = done ? '#EEF4F6' : 'none';
+    btn.style.color = done ? 'var(--accent-m)' : 'var(--muted)';
+  }
+  updateMobProgress();
+}
+
+function updateMobProgress() {
+  const pct = MOBILITY.length ? (mobDone.size / MOBILITY.length) * 100 : 0;
+  document.getElementById('mob-progress-fill').style.width = pct + '%';
+}
 
 // ── STORAGE ──
 function getHistory() { try { return JSON.parse(localStorage.getItem('kb_history') || '[]'); } catch(e) { return []; } }
@@ -507,6 +737,7 @@ function showScreen(name) {
   if (nb) nb.classList.add('active');
   if (name === 'home') renderHome();
   if (name === 'history') renderHistory();
+  if (name === 'mobility') renderMobility();
 }
 
 function goHome() {
@@ -545,6 +776,120 @@ function calcStreak(history) {
   return { current, best: Math.max(best, current) };
 }
 
+// ── RECOVERY CARD ──
+function renderRecoveryCard(history) {
+  const now = new Date();
+  const DAY_MS = 24 * 60 * 60 * 1000;
+
+  // Build this week's session map (Mon=0 … Sun=6)
+  const weekStart = new Date(now);
+  const todayDow = now.getDay() === 0 ? 6 : now.getDay() - 1; // Mon-based
+  weekStart.setDate(now.getDate() - todayDow);
+  weekStart.setHours(0, 0, 0, 0);
+
+  const dayLabels = ['M','T','W','T','F','S','S'];
+  const sessionDays = new Set(); // 0–6 Mon-based indices this week
+
+  history.forEach(s => {
+    const d = new Date(s.date);
+    d.setHours(0,0,0,0);
+    const diff = Math.round((d - weekStart) / DAY_MS);
+    if (diff >= 0 && diff <= 6) sessionDays.add(diff);
+  });
+
+  const todayIdx = todayDow;
+
+  // Check if last session was yesterday (consecutive)
+  const yesterday = new Date(now); yesterday.setDate(now.getDate() - 1); yesterday.setHours(0,0,0,0);
+  const lastSession = [...history].reverse()[0];
+  const lastDate = lastSession ? new Date(lastSession.date) : null;
+  if (lastDate) lastDate.setHours(0,0,0,0);
+  const trainedYesterday = lastDate && lastDate.getTime() === yesterday.getTime();
+  const trainedToday = sessionDays.has(todayIdx);
+
+  // Count this week's sessions
+  const weekCount = sessionDays.size;
+
+  // Status logic
+  let statusDot = '#6B8F71'; // sage = good
+  let statusTitle = 'Well recovered';
+  let statusSub = 'Ready to train today.';
+
+  if (trainedToday) {
+    statusDot = '#A67B5B';
+    statusTitle = 'Session logged today';
+    statusSub = 'Rest up — next session tomorrow or later.';
+  } else if (trainedYesterday) {
+    statusDot = '#C8A96E'; // amber
+    statusTitle = 'Rest day recommended';
+    statusSub = 'You trained yesterday. 48h recovery optimises adaptation.';
+  } else if (weekCount >= 3) {
+    statusDot = '#A67B5B';
+    statusTitle = '3 sessions this week';
+    statusSub = 'You\'ve hit the weekly target. Finish strong next week.';
+  }
+
+  // Week bar heights — 0=no session, 1=session
+  const bars = dayLabels.map((label, i) => {
+    const hasSession = sessionDays.has(i);
+    const isToday = i === todayIdx;
+    const isFuture = i > todayIdx;
+    let bg, height;
+    if (hasSession) { bg = '#6B8F71'; height = '28px'; }
+    else if (isToday) { bg = 'var(--border)'; height = '10px'; }
+    else if (isFuture) { bg = 'var(--border)'; height = '4px'; }
+    else { bg = 'var(--border)'; height = '4px'; }
+    return { label, hasSession, isToday, isFuture, bg, height };
+  });
+
+  const container = document.getElementById('recovery-card-container');
+  const wasOpen = container.querySelector('.recovery-card-body.open');
+
+  container.innerHTML = `
+    <div class="recovery-card anim-in">
+      <div class="recovery-card-header" onclick="toggleRecoveryCard()">
+        <div class="recovery-status-dot" style="background:${statusDot}"></div>
+        <div style="flex:1">
+          <div class="recovery-card-title">${statusTitle}</div>
+          <div class="recovery-card-sub">${statusSub}</div>
+        </div>
+        <div class="recovery-chevron${wasOpen ? ' open' : ''}" id="recovery-chevron">▾</div>
+      </div>
+      <div class="recovery-card-body${wasOpen ? ' open' : ''}" id="recovery-body">
+        <div class="week-dots">
+          ${bars.map(b => `
+            <div class="week-day">
+              <div class="week-day-bar" style="height:${b.height};background:${b.bg}"></div>
+              <div class="week-day-label${b.isToday ? ' today' : ''}">${b.label}</div>
+            </div>`).join('')}
+        </div>
+        <div class="recovery-rule">
+          <div class="recovery-rule-icon">🗓️</div>
+          <div class="recovery-rule-text"><strong>3 sessions per week, non-consecutive.</strong> Any three days with a rest day between each — Mon/Wed/Fri, Tue/Thu/Sat, whatever fits your week.</div>
+        </div>
+        <div class="recovery-rule">
+          <div class="recovery-rule-icon">🔬</div>
+          <div class="recovery-rule-text"><strong>Why rest days matter for growth.</strong> Muscle protein synthesis peaks around 24h post-session and remains elevated for ~48h. That window is when your body actually builds the adaptation — training through it prematurely cuts the process short.</div>
+        </div>
+        <div class="recovery-rule">
+          <div class="recovery-rule-icon">⛳</div>
+          <div class="recovery-rule-text"><strong>Golf performance depends on it too.</strong> Rotational power, timing, and feel all deteriorate with accumulated fatigue. Your best sessions on the course happen when your nervous system is recovered, not just your muscles.</div>
+        </div>
+        <div class="recovery-rule">
+          <div class="recovery-rule-icon">😴</div>
+          <div class="recovery-rule-text"><strong>Rest days aren't empty days.</strong> Walk, stretch, mobility work — all good. The adaptation is happening, you just can't feel it.</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function toggleRecoveryCard() {
+  const body = document.getElementById('recovery-body');
+  const chevron = document.getElementById('recovery-chevron');
+  const open = body.classList.toggle('open');
+  chevron.classList.toggle('open', open);
+}
+
 // ── HOME ──
 function renderHome() {
   const history = getHistory();
@@ -574,7 +919,8 @@ function renderHome() {
     ? 'No sessions this week yet.'
     : `${thisWeek.length} session${thisWeek.length > 1 ? 's' : ''} · ${thisWeek.map(s => 'Day ' + s.day).join(', ')}`;
 
-  // Day cards
+  // Recovery card
+  renderRecoveryCard(history);
   const grid = document.getElementById('day-grid');
   grid.innerHTML = '';
   PROGRAMS.forEach(prog => {
@@ -597,6 +943,22 @@ function renderHome() {
     `;
     grid.appendChild(card);
   });
+
+  // Mobility card
+  const mobCard = document.createElement('div');
+  mobCard.className = 'day-card day-m anim-in';
+  mobCard.onclick = () => startMobility();
+  mobCard.innerHTML = `
+    <div class="day-card-tag">Rest Day</div>
+    <div class="day-card-title">Mobility</div>
+    <div class="day-card-sub">Hip & thoracic — 10 min, no equipment</div>
+    <div class="day-card-meta">
+      <div class="day-card-meta-item">Movements<span>3</span></div>
+      <div class="day-card-meta-item">Equipment<span>None</span></div>
+      <div class="day-card-meta-item">Duration<span>~10 min</span></div>
+    </div>
+  `;
+  grid.appendChild(mobCard);
 }
 
 // ── START WORKOUT ──
@@ -611,6 +973,9 @@ function startWorkout(dayId) {
   });
   document.getElementById('workout-title').innerHTML = `Day ${currentProg.id} — <em>${currentProg.label}</em>`;
   document.getElementById('progress-fill').style.background = currentProg.accent;
+  // Restore saved equipment preference on toggle UI
+  document.getElementById('equip-kb').classList.toggle('active', currentEquip === 'kb');
+  document.getElementById('equip-db').classList.toggle('active', currentEquip === 'db');
   renderWorkout();
   showScreen('workout');
 }
@@ -622,6 +987,7 @@ function renderWorkout() {
   currentProg.exercises.forEach((ex, i) => {
     const sets = sessionData[ex.id];
     const allDone = sets.every(s => s.done);
+    const v = ex[currentEquip]; // kb or db variant
     const card = document.createElement('div');
     card.className = 'ex-card anim-in';
     card.id = `ex-card-${ex.id}`;
@@ -630,7 +996,7 @@ function renderWorkout() {
       <div class="ex-card-header" onclick="toggleExBody('${ex.id}')">
         <div class="ex-icon" style="background:${currentProg.accent}18">${ex.icon}</div>
         <div class="ex-info">
-          <div class="ex-name">${ex.name}</div>
+          <div class="ex-name">${v.name}</div>
           <div class="ex-meta">${ex.defaultSets} sets · ${ex.defaultReps} reps target</div>
         </div>
         <div class="ex-done-indicator">${allDone ? '✓' : '○'}</div>
@@ -642,14 +1008,14 @@ function renderWorkout() {
         <div id="sets-${ex.id}">${sets.map((s, si) => renderSetRow(ex.id, si, s)).join('')}</div>
         <button class="add-set-btn" onclick="addSet('${ex.id}')">+ Add set</button>
         <div>
-          <a class="yt-link" href="${ex.youtube}" target="_blank" rel="noopener">
+          <a class="yt-link" href="${v.youtube}" target="_blank" rel="noopener">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M23.5 6.19a3.02 3.02 0 00-2.12-2.14C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.38.55A3.02 3.02 0 00.5 6.19C0 8.07 0 12 0 12s0 3.93.5 5.81a3.02 3.02 0 002.12 2.14C4.5 20.5 12 20.5 12 20.5s7.5 0 9.38-.55a3.02 3.02 0 002.12-2.14C24 15.93 24 12 24 12s0-3.93-.5-5.81zM9.75 15.52V8.48L15.86 12l-6.11 3.52z"/></svg>
-            ${ex.ytLabel}
+            ${v.ytLabel}
           </a>
         </div>
         <button class="golf-tip-btn" onclick="toggleGolfTip('${ex.id}')">⛳ Golf benefit</button>
         <div class="golf-tip-content" id="golf-tip-${ex.id}">
-          ${ex.golf}<br><br><em>"${ex.cue}"</em>
+          ${ex.golf}<br><br><em>"${v.cue}"</em>
         </div>
       </div>
     `;
